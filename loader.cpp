@@ -66,7 +66,7 @@ extern "C" DWORD GetTargetThreadIDFromProcName(const wchar_t * ProcName)
       return false;
    }
 
-   pe.dwSize = sizeof(PROCESSENTRY32);
+   pe.dwSize = sizeof(PROCESSENTRY32W);
 
    retval = Process32FirstW(thSnapShot, &pe);
 
