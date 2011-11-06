@@ -1,0 +1,3 @@
+[submodule "libUnicodeHelper"]
+	path = libUnicodeHelper
+	url = git://github.com/kimperator/libUnicodeHelper.git
