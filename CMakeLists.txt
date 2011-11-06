@@ -29,4 +29,5 @@ cmake_minimum_required(VERSION 2.8)
 project(libDllLoader CXX)
 
 ADD_LIBRARY(DllLoader STATIC loader.cpp)
+ADD_SUBDIRECTORY(libUnicodeHelper)
 TARGET_LINK_LIBRARIES(DllLoader UnicodeHelper)
