@@ -1,3 +1,6 @@
 [submodule "libUnicodeHelper"]
 	path = libUnicodeHelper
 	url = git://github.com/kimperator/libUnicodeHelper.git
+[submodule "NinjectLib"]
+	path = NinjectLib
+	url = git://github.com/kimperator/NinjectLib.git

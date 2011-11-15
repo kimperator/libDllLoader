@@ -10,6 +10,7 @@
 #include <shlwapi.h>
 #include "loader.h"
 #include "libUnicodeHelper/helper.h"
+#include "NinjectLib/IATModifier.h"
 
 #include <iostream>
 using namespace std;
@@ -17,14 +18,42 @@ using namespace std;
 #define WIN32_LEAN_AND_MEAN
 #define CREATE_THREAD_ACCESS (PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ)
 
-extern "C" bool CLASS_DECLSPEC FileExists(const wchar_t *fileName)
+extern "C" BOOL CLASS_DECLSPEC FileExists(const wchar_t *fileName)
 {
     DWORD       fileAttr;
 
     fileAttr = GetFileAttributesW(fileName);
     if (0xFFFFFFFF == fileAttr)
-        return false;
-    return true;
+        return FALSE;
+    return TRUE;
+}
+extern "C" BOOL CLASS_DECLSPEC inject_dll_new_process(const char* exe, const char* params, const char* dll, const char * workingDir) {
+	bool ret = FALSE;
+	STARTUPINFO sInfo = {0};
+	sInfo.cb = sizeof(STARTUPINFO);
+	PROCESS_INFORMATION pInfo;
+
+	if (CreateProcessA(exe, (char*) params, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, workingDir, &sInfo, &pInfo))
+	{
+		try
+		{
+			Process process(pInfo.dwProcessId);
+			IATModifier iatModifier(process);
+			// retrieve image base address so IATModifier is able to find the import directory
+			iatModifier.setImageBase(process.getImageBase(pInfo.hThread));
+			// modify import directory so our injected dll is loaded first
+			iatModifier.writeIAT(dll);
+			ResumeThread(pInfo.hThread);
+			ret = TRUE;
+		}
+		catch (std::exception& e)
+		{
+			ResumeThread(pInfo.hThread);
+			CloseHandle(pInfo.hThread);
+			CloseHandle(pInfo.hProcess);
+		}
+	}
+	return ret;
 }
 
 extern "C" BOOL CLASS_DECLSPEC inject_dll_into_processid(DWORD pID, const wchar_t * wDLL_NAME)
@@ -36,12 +65,12 @@ extern "C" BOOL CLASS_DECLSPEC inject_dll_into_processid(DWORD pID, const wchar_
    LPVOID RemoteString, LoadLibAddy;
 
    if(!pID)
-      return false;
+      return FALSE;
 
    Proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pID);
    if(!Proc)
    {
-      return false;
+      return FALSE;
    }
 
    LoadLibAddy = (LPVOID)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "LoadLibraryA");
@@ -52,7 +81,7 @@ extern "C" BOOL CLASS_DECLSPEC inject_dll_into_processid(DWORD pID, const wchar_
    VirtualFreeEx(Proc, RemoteString, strlen(DLL_NAME), MEM_RELEASE);
    CloseHandle(Proc);
    CoTaskMemFree(DLL_NAME);
-   return true;
+   return TRUE;
 }
 
 extern "C" DWORD GetTargetThreadIDFromProcName(const wchar_t * ProcName)
@@ -63,7 +92,7 @@ extern "C" DWORD GetTargetThreadIDFromProcName(const wchar_t * ProcName)
    thSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
    if(thSnapShot == INVALID_HANDLE_VALUE)
    {
-      return false;
+      return FALSE;
    }
 
    pe.dwSize = sizeof(PROCESSENTRY32W);
@@ -89,13 +118,13 @@ extern "C" BOOL CLASS_DECLSPEC inject_dll_into_processname(const wchar_t* proces
 	GetFullPathNameW(DLL_NAME, MAX_PATH, buf, NULL);
 
 	if (!FileExists(buf)) {
-		return false;
+		return FALSE;
 	}
 
 	if (!inject_dll_into_processid(pID, buf)) {
-		return false;
+		return FALSE;
 	}
-	return true;
+	return TRUE;
 }
 
 extern "C" BOOL CLASS_DECLSPEC inject_dll_into_processnameA(const char* processname, const char * DLL_NAME) {

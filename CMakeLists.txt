@@ -30,4 +30,5 @@ project(libDllLoader CXX)
 
 ADD_LIBRARY(DllLoader STATIC loader.cpp)
 ADD_SUBDIRECTORY(libUnicodeHelper)
-TARGET_LINK_LIBRARIES(DllLoader UnicodeHelper)
+ADD_SUBDIRECTORY(NinjectLib)
+TARGET_LINK_LIBRARIES(DllLoader UnicodeHelper ninject)
